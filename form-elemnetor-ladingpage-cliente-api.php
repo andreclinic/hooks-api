@@ -1,16 +1,16 @@
 
 <?php
 
+
+/****   CÓDIGO FORM - CONTATO LANDINGPAGE WHATSAPP    ****/
+
 function promocao($record){
 
 	$form_name = $record->get_form_settings( 'form_name' );
 	
 	
-    // capturando o formulário pelo nome
-    $nome_formulario = "promocao";
-    
     //Definir o formulário
-    if ( $nome_formulario !== $form_name ) {
+    if ( 'promocao' !== $form_name ) {
         return;
     }
 
@@ -37,10 +37,13 @@ function promocao($record){
 		$telefone_cliente =  $telefone; 
 	}
 		
+   // echo $telefoneForm;
+
+
 
 	$texto = "*PARABÉNS* - Ganhou *50% OFF*.\r\n\r\nAgora digite *1*, para que nossso *atendente virtual* possa informar seu *cupom de desconto*.";
 
-	$url_atual = 'alsweb.com.br';//str_replace(array('http://','https://'), '', get_site_url());
+	$url_atual = str_replace(array('http://','https://'), '', get_site_url());
 	
 	$url = 'http://23.88.58.172:8000/send-message';
 
@@ -62,6 +65,8 @@ function promocao($record){
 		$context  = stream_context_create($options);
 		// Enviando a requisição
 		$result = file_get_contents($url, false, $context);
+
+
 
 
 }
