@@ -1,105 +1,165 @@
 
 <?php
 
-/****   CÓDIGO FORM - CONTATO E COMERCIAL WHATSAPP    ****/
 
-function promocao($record){
 
+/*****************************************************************************************************/
+/*********************************** API Whatsapp Form Elementor *************************************/
+/*****************************************************************************************************/
+
+ 
+// Pegando dados para o enviar para API do WhatsApp
+
+function pegando_dados_api($record){
+	
 	$form_name = $record->get_form_settings( 'form_name' );
 	
+	// capturando o formulário pelo nome
+	$nome_formulario = 'cupom';
 	
-    // capturando o formulário pelo nome
-    $nome_formulario = "promocao";
-    
-    //Definir o formulário
-    if ( $nome_formulario !== $form_name ) {
+	
+	//Definir o formulário
+	if ( $nome_formulario !== $form_name ) {
         return;
     }
-
-	// PEGANDO TELEFONE COMERCIAL
-	$telefone_comercial = "6281762590";
-  
 	
 	//Buscar os campos do formulário
     $raw_fields = $record->get( 'fields' );
     $fields = [];
-    foreach ( $raw_fields as $id => $field ) {
-        $fields[ $id ] = $field['value'];
-    }
     
-    $telefoneForm = preg_replace("/\D/","", $fields['telefone']);
-	//Pegando DDD do cliente
-	$telefone1 = substr($telefoneForm, 0, 2);
-	
-		// Validando DDD de São Paulo e Rio
-	
-	if( $telefone1 === "11" || $telefone1 === "12" || $telefone1 === "13" || $telefone1 === "14" || $telefone1 === "15" || $telefone1 === "16" || $telefone1 === "17" || $telefone1 === "18" || $telefone1 === "19" || $telefone1 === "21" || $telefone1 === "22" || $telefone1 === "24"){
-		$telefone_cliente = $telefoneForm;
-	}else{
-		$telefone2 = substr($telefoneForm, -8);
-		$telefone = $telefone1 . $telefone2;
-		$telefone_cliente =  $telefone; 
+	foreach ( $raw_fields as $id => $field ) {
+    $fields[ $id ] = $field['value'];
 	}
-
-	// INFORMANDO TELEFONE COMERCIAL D DO CLIENTE
-	$array = array($telefone_comercial, $telefone_cliente);
+		// Recuperando os campos do formulário (telefone)
+    	$telefone = $fields['nwa'];
 		
-
-	// Montando requisição e enviando para API.
-	foreach ($array as $key => $value) {
-
-
-			// Montando mensagem para o cliente e o comercial.
-			$apimsgsaudacao = "*CUPOM DE DESCONTO*";
-			$despedida = array("Muito obrigado, agradecemos a preferencia!","Ficamos a disposição, abraços!","Pode contar com a gente, agradecemos a preferencia!");
-			$apimsgdespedida = $despedida[array_rand($despedida)];
-			$plinha = "\r\n";
-			$texto_cliente = "*PARABÉNS* - Ganhou *50% OFF*.\r\n\r\nAgora digite *1*, para que nossso *atendente virtual* possa informar seu *cupom de desconto*.";
-			
-				//SEPARANDO MENSAGEM PARA O WHATSAPP COMERCIALE CLIENTE.
-	
-				if($value === $telefone_comercial){
-					// Mensagem para o comercial
-					$apimsgCliente = "Novo lead capturado".$plinha.$plinha."Telefone: ".$telefone_cliente ;
-				} else{
-					
-					//Mensagem para o cliente
-				
-					$apimsgCliente = $apimsgsaudacao.$plinha.$plinha.$texto_cliente.$plinha.$plinha.$apimsgdespedida;
-				}	
+		$telComercial = "62986062592";
 		
-
+		$msgCliente = "*PARABÉNS* - Ganhou *50% OFF*.\r\n\r\nAgora digite *1*, para que nossso *atendente virtual* possa informar seu *cupom de desconto*.";
 	
 
-		// PEGANDO URL DO CLIENTE PARA VALIDAÇÃO
-	$url_atual = "alsweb.com.br"; //str_replace(array('http://','https://'), '', get_site_url());
-		
-		// PEGAR ENDEREÇO DO INTERMEDIÁRIO DA API
-	$url = 'http://116.203.60.247:8000/send-message/';
-
-		// Informando o sender (chip), UR local, numero para disparo e mensagem.
-	$data1 = array('sender' => 'primary','idc' => $url_atual,'number' => '55' . $telefone_cliente, 'message' => $apimsgCliente);	
-
-		// Montando array com os dados de envio.
-		$options = array(
-			'http' => array(
-				'header'  => "Content-type: application/x-www-form-urlencoded\r\n",
-				'method'  => 'POST',
-				'content' => http_build_query($data1),
-				'timeout' => 10
-			)
-		);
+		$msgComercial = "Lead captado na landingpage *".$telefone."*";
 	
+	
+		// Nome do sender de envio
+		$sender = "primary";
+	
+		// URL da API ou Sistema Intermediário
+		$urlApi = "http://23.88.57.118:9000/send-message/";
+	
+		// Função para enviar os dados para API
+		preparando_envio_mensagem_api($telefone, $telComercial, $msgCliente, $msgComercial, $sender, $urlApi);
+	
+}
 
-		// Montando a requisição
-		$context  = stream_context_create($options);
-		// Enviando a requisição
-		$result = file_get_contents($url, false, $context);
+	/************************** Hooks dos formulários do Jet Engine **************************/
 
-	}
+	add_action('elementor_pro/forms/new_record', 'pegando_dados_api');
+
+	
+	/************************** Preparando dados para envio da Mensagem para API **************************/
+
+	function preparando_envio_mensagem_api($telefone, $telComercial, $msgCliente, $msgComercial, $sender, $urlApi){
+
+    $telefoneCliente = valida_telefone($telefone);
+    $telComercial = valida_telefone($telComercial);
+    $telefones = array('telComercial' => $telComercial, 'telCliente' => $telefone);
+    $msgCompleta = $msgCliente;
+
+
+    foreach ($telefones as $value):
+        $telefoneArray = $value;
+        if($telefoneArray == $telComercial){
+            
+            $msgCompleta = $msgComercial;
+            $telefone = $telComercial;
+
+            $r = enviar_mensagem_whatsapp_texto_api($sender,$telefone,$msgCompleta, $urlApi);
+
+
+        
+            if($r['status'] == "sucesso"){
+                //echo "Mensagem Enviada com sucesso";
+            }else{
+                //echo "Houve um erro";
+            }
+
+        }else{
+            $msgCompleta = $msgCliente;
+            $telefone = $telefoneCliente;
+ 
+            $r = enviar_mensagem_whatsapp_texto_api($sender,$telefone,$msgCompleta, $urlApi);agendamento com Jet Apintment
+
+            if($r['status'] == "sucesso"){
+                //echo "Mensagem Enviada com sucesso";
+            }else{
+                //echo "Houve um erro";
+            }
+        }
+ 
+    
+    endforeach;
 
 }
-add_action( 'elementor_pro/forms/new_record', 'promocao' );
+
+
+/************************** Executa o Envio da Mensagem para API **************************/
+
+function enviar_mensagem_whatsapp_texto_api($sender,$telefone,$msgCompleta, $urlApi){
+    
+    
+	$dominio = str_replace(array('http://','https://'), '', get_site_url());
+
+    $data1 = array('sender'=> $sender, 'idc' => $dominio,  'number' => '+55' . $telefone, 'message' => $msgCompleta);
+    // use key 'http' even if you send the request to https://...
+    $options = array(
+        'http' => array(
+            'header' => "Content-type: application/x-www-form-urlencoded\r\n",
+            'method' => 'POST',
+            'content' => http_build_query($data1),
+            'timeout' => 10,
+        ),
+    );
+    // Montando a requisição
+    $context = stream_context_create($options);
+    // Enviando a requisição
+    $result = file_get_contents($urlApi, false, $context);
+
+    $resultado = json_decode($result);
+
+    $status_resultado = $resultado->status;
+
+    if($status_resultado == 1){
+        $r = array('status' => 'sucesso');
+    }else{
+        $r = array('status'=> 'Houve um erro ao tentar enviar sua mensagem');
+    }
+
+    return $r;
+    
+}
+
+
+/************************** Função validar validar o telefone **************************/
+
+function valida_telefone($telefone)
+{
+    
+    $telefone = preg_replace("/\D/", "", $telefone); 
+    $ddd = substr($telefone, 0, 2); 
+
+    if ($ddd === "11" || $ddd === "12" || $ddd === "13" || $ddd === "14" || $ddd === "15" || $ddd === "16" || $ddd === "17" || $ddd === "18" || $telefone1 === "19" || $telefone1 === "21" || $telefone1 === "22" || $telefone1 === "24") {
+        $telefone = $telefone;
+    } else {
+        $telefone = substr($telefone, -8); 
+        $telefone = $ddd . $telefone; 
+        $telefone = $telefone;
+    }
+
+    return $telefone;
+}
+
+
 
 
 
